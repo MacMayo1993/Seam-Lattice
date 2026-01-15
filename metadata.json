@@ -1,0 +1,5 @@
+{
+  "name": "Seam Lattice Visualizer",
+  "description": "Interactive simulation of Seam Lattice dynamics on a non-orientable toroidal grid, visualizing phase transitions and information annihilation.",
+  "requestFramePermissions": []
+}
