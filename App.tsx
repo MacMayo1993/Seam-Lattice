@@ -1,26 +1,28 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Activity, RotateCcw, AlertCircle, Zap } from 'lucide-react';
-import { 
-  createGrid, 
-  getNeighbors, 
-  checkAnnihilation, 
-  calculateCoherence 
+import { RotateCcw, Zap, Sun, Moon } from 'lucide-react';
+import {
+  createGrid,
+  getNeighbors,
+  checkAnnihilation,
+  calculateCoherence,
+  randomizeGrid
 } from './utils/latticeLogic';
-import { 
-  CellState, 
-  Coordinate, 
-  SimulationConfig, 
-  SimulationStats 
+import {
+  CellState,
+  Coordinate,
+  SimulationConfig,
+  SimulationStats
 } from './types';
-import { 
-  K_STAR, 
-  DEFAULT_GRID_SIZE, 
-  DEFAULT_BIAS, 
-  ANIMATION_SPEED_MS 
+import {
+  K_STAR,
+  DEFAULT_GRID_SIZE,
+  DEFAULT_BIAS,
+  ANIMATION_SPEED_MS
 } from './constants';
 import { GridVisualizer } from './components/GridVisualizer';
 import { SimulationControls } from './components/SimulationControls';
 import { InfoPanel } from './components/InfoPanel';
+import { MetricsPanel } from './components/MetricsPanel';
 
 const App: React.FC = () => {
   // --- State ---
@@ -40,6 +42,7 @@ const App: React.FC = () => {
   });
   const [isRunning, setIsRunning] = useState(false);
   const [annihilated, setAnnihilated] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Refs for animation loop stability
   const queueRef = useRef<Coordinate[]>([]);
@@ -66,15 +69,38 @@ const App: React.FC = () => {
   // Ignite Logic (Start Cascade)
   const handleIgnite = useCallback(() => {
     handleReset();
-    
+
     // Start from center
     const center = Math.floor(config.gridSize / 2);
     const startNode: Coordinate = { row: center, col: center };
-    
+
     setQueue([startNode]);
     queueRef.current = [startNode];
     setIsRunning(true);
   }, [config.gridSize, handleReset]);
+
+  // Randomize Grid
+  const handleRandomize = useCallback(() => {
+    setIsRunning(false);
+    setAnnihilated(false);
+    const newGrid = randomizeGrid(config.gridSize);
+    setGrid(newGrid);
+    gridRef.current = newGrid;
+    setQueue([]);
+    queueRef.current = [];
+    setStats({
+      steps: 0,
+      coherence: calculateCoherence(newGrid),
+      activeSeams: 0
+    });
+  }, [config.gridSize]);
+
+  // Step Forward (single tick)
+  const handleStepForward = useCallback(() => {
+    if (!isRunning) {
+      stepSimulation();
+    }
+  }, [isRunning, stepSimulation]);
 
   // Simulation Step
   const stepSimulation = useCallback(() => {
@@ -153,59 +179,52 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col md:flex-row font-sans selection:bg-rose-500/30">
-      
+    <div className={`min-h-screen ${isDarkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-gray-50 text-gray-900'} flex flex-col md:flex-row font-sans selection:bg-rose-500/30 transition-colors duration-300`}>
+
       {/* Left Panel: Controls & Info */}
-      <div className="w-full md:w-1/3 min-w-[350px] border-r border-zinc-800 flex flex-col h-screen overflow-y-auto custom-scrollbar z-20 bg-zinc-950 shadow-2xl">
-        <div className="p-6 md:p-8 flex-1 flex flex-col gap-8">
-          <header>
-            <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-rose-500 to-indigo-500 bg-clip-text text-transparent">
-              Seam Lattice
-            </h1>
-            <p className="text-zinc-500 mt-2 font-mono text-sm">
-              Non-orientable topology prototype
-            </p>
+      <div className={`w-full md:w-1/3 min-w-[350px] border-r ${isDarkMode ? 'border-zinc-800 bg-zinc-950' : 'border-gray-200 bg-white'} flex flex-col h-screen overflow-y-auto custom-scrollbar z-20 shadow-2xl`}>
+        <div className="p-6 md:p-8 flex-1 flex flex-col gap-6">
+          <header className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-rose-500 to-indigo-500 bg-clip-text text-transparent">
+                Seam Lattice
+              </h1>
+              <p className={`${isDarkMode ? 'text-zinc-500' : 'text-gray-500'} mt-2 font-mono text-sm`}>
+                Non-orientable topology prototype
+              </p>
+            </div>
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className={`p-2 rounded-lg ${isDarkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} transition-all border ${isDarkMode ? 'border-zinc-700' : 'border-gray-300'}`}
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
           </header>
 
-          <SimulationControls 
+          <SimulationControls
             config={config}
             isRunning={isRunning}
             onUpdateConfig={(c) => setConfig(prev => ({ ...prev, ...c }))}
             onToggleRun={() => setIsRunning(!isRunning)}
             onReset={handleReset}
             onIgnite={handleIgnite}
+            onRandomize={handleRandomize}
+            onStepForward={handleStepForward}
           />
+
+          <MetricsPanel stats={stats} />
 
           <InfoPanel />
         </div>
       </div>
 
       {/* Right Panel: Visualization */}
-      <div className="flex-1 flex flex-col items-center justify-center relative bg-zinc-950 p-6 overflow-hidden">
-        
-        {/* Background Grid Decoration (Faded for focus) */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_10%,transparent_100%)] pointer-events-none opacity-50" />
+      <div className={`flex-1 flex flex-col items-center justify-center relative ${isDarkMode ? 'bg-zinc-950' : 'bg-gray-100'} p-6 overflow-hidden transition-colors duration-300`}>
 
-        {/* Status Bar */}
-        <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-10 pointer-events-none">
-          <div className="flex gap-4">
-            <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 px-4 py-2 rounded-lg shadow-xl">
-              <div className="text-xs text-zinc-500 uppercase font-bold">Step</div>
-              <div className="font-mono text-xl">{stats.steps}</div>
-            </div>
-          </div>
-          
-          <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 px-4 py-2 rounded-lg shadow-xl text-right">
-             <div className="text-xs text-zinc-500 uppercase font-bold">State Coherence</div>
-             <div className="font-mono text-xl flex items-center gap-2 justify-end">
-                {stats.coherence === 1 || stats.coherence === -1 ? (
-                  <span className="text-emerald-400">RESOLVED</span>
-                ) : (
-                   stats.coherence.toFixed(3)
-                )}
-             </div>
-          </div>
-        </div>
+        {/* Background Grid Decoration (Faded for focus) */}
+        <div className={`absolute inset-0 ${isDarkMode ? 'bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)]' : 'bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)]'} bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_10%,transparent_100%)] pointer-events-none opacity-50`} />
 
         {/* Main Grid */}
         <div className="relative z-0 flex flex-col items-center w-full">
@@ -249,19 +268,19 @@ const App: React.FC = () => {
 
         {/* Legend Overlay */}
         <div className="absolute bottom-8 left-8 right-8 flex justify-center pointer-events-none">
-          <div className="bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-full px-6 py-3 shadow-xl flex items-center gap-6 pointer-events-auto">
+          <div className={`${isDarkMode ? 'bg-zinc-900/90 border-zinc-800 text-zinc-300' : 'bg-white/90 border-gray-300 text-gray-700'} backdrop-blur border rounded-full px-6 py-3 shadow-xl flex items-center gap-6 pointer-events-auto transition-colors duration-300`}>
              <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-                <span className="text-xs text-zinc-300 font-medium">State A</span>
+                <span className="text-xs font-medium">State A</span>
              </div>
              <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span className="text-xs text-zinc-300 font-medium">State B</span>
+                <span className="text-xs font-medium">State B</span>
              </div>
-             <div className="w-px h-4 bg-zinc-700"></div>
+             <div className={`w-px h-4 ${isDarkMode ? 'bg-zinc-700' : 'bg-gray-300'}`}></div>
              <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded border-2 border-white bg-rose-500 shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
-                <span className="text-xs text-white font-bold">The Seam (Active Change)</span>
+                <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>The Seam (Active Change)</span>
              </div>
           </div>
         </div>
