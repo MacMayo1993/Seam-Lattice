@@ -66,6 +66,20 @@ The visualizer demonstrates a lattice-based model where:
 - The simulation continues until all propagations complete
 - "Resolution" is achieved when the entire grid reaches a uniform state
 
+## GitHub Codespaces
+
+This repository is configured to work with GitHub Codespaces:
+
+1. Click the "Code" button and select "Create codespace on main"
+2. Wait for the environment to build (this may take a few minutes on first launch)
+3. The dev server will start automatically on port 3000
+4. Access your app through the forwarded port notification
+
+**Troubleshooting Codespaces:**
+- If the dev server doesn't start automatically, run `npm install && npm run dev`
+- The app will be available at `http://localhost:3000/Seam-Lattice/` (note the base path)
+- Port 3000 is automatically forwarded and should appear in the PORTS tab
+
 ## Technology Stack
 
 - React 18 with TypeScript
