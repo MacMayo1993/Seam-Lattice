@@ -50,3 +50,14 @@ export const calculateCoherence = (grid: CellState[][]): number => {
   }
   return sum / (size * size);
 };
+
+/**
+ * Creates a grid with randomized cell states.
+ */
+export const randomizeGrid = (size: number): CellState[][] => {
+  return Array.from({ length: size }, () =>
+    Array.from({ length: size }, () =>
+      Math.random() > 0.5 ? CellState.POSITIVE : CellState.NEGATIVE
+    )
+  );
+};
