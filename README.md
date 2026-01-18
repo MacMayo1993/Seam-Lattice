@@ -72,13 +72,15 @@ This repository is configured to work with GitHub Codespaces:
 
 1. Click the "Code" button and select "Create codespace on main"
 2. Wait for the environment to build (this may take a few minutes on first launch)
-3. The dev server will start automatically on port 3000
-4. Access your app through the forwarded port notification
+3. The dev server starts automatically in the background
+4. Check the **PORTS** tab to see port 3000 forwarded
+5. Click the globe icon next to port 3000 to open the app
 
 **Troubleshooting Codespaces:**
-- If the dev server doesn't start automatically, run `npm install && npm run dev`
-- The app will be available at `http://localhost:3000/Seam-Lattice/` (note the base path)
-- Port 3000 is automatically forwarded and should appear in the PORTS tab
+- **Dev server logs**: View logs at `/tmp/vite-dev.log` or run `npm run dev` manually
+- **App URL**: `http://localhost:3000/Seam-Lattice/` (note the base path)
+- **Restart server**: Kill existing process and run `npm run dev`
+- **Port forwarding**: Port 3000 should auto-forward (check PORTS tab)
 
 ## Technology Stack
 
