@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { CellState, Coordinate, CellMetadata, VisualizationMode } from '../types';
 import { COLORS } from '../constants';
-import { ZoomIn, ZoomOut, RotateCcw, Layers, Eye } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Layers, Eye, Repeat } from 'lucide-react';
 
 interface GridVisualizerProps {
   grid: CellState[][];
@@ -96,6 +96,18 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({
     >
       {({ zoomIn, zoomOut, resetTransform }) => (
         <>
+          {/* Toroidal Topology Badge */}
+          <div className="flex justify-center mb-3">
+            <div
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-lg"
+              title="Edges wrap around: top↔bottom, left↔right. No boundaries!"
+            >
+              <Repeat size={16} className="text-purple-400" />
+              <span className="text-xs font-semibold text-purple-300">Toroidal Topology</span>
+              <span className="text-xs text-purple-400/70 hidden sm:inline">• Edges wrap around</span>
+            </div>
+          </div>
+
           {/* Visualization Mode Toggle */}
           {onVisualizationModeChange && (
             <div className="flex gap-2 mb-3 justify-center flex-wrap">
