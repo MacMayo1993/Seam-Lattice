@@ -124,7 +124,7 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ stats, historyLimit 
 
   return (
     <div className="space-y-4">
-      {/* Metrics Cards */}
+      {/* Primary Metrics Cards */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-lg p-3">
           <div className="flex items-center gap-2 text-xs text-zinc-500 uppercase font-bold mb-1">
@@ -152,6 +152,33 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ stats, historyLimit 
           <div className="font-mono text-2xl text-zinc-100">{stats.activeSeams}</div>
         </div>
       </div>
+
+      {/* Advanced Metrics - Show when running */}
+      {stats.steps > 0 && (stats.propagationVelocity !== undefined || stats.waveFrontWidth !== undefined) && (
+        <div className="grid grid-cols-2 gap-3">
+          {stats.propagationVelocity !== undefined && (
+            <div className="bg-indigo-900/20 backdrop-blur border border-indigo-500/30 rounded-lg p-3">
+              <div className="text-xs text-indigo-400 uppercase font-bold mb-1">
+                Propagation Rate
+              </div>
+              <div className="font-mono text-lg text-indigo-300">
+                {stats.propagationVelocity.toFixed(1)} <span className="text-xs text-zinc-500">cells/step</span>
+              </div>
+            </div>
+          )}
+
+          {stats.waveFrontWidth !== undefined && (
+            <div className="bg-violet-900/20 backdrop-blur border border-violet-500/30 rounded-lg p-3">
+              <div className="text-xs text-violet-400 uppercase font-bold mb-1">
+                Wave Front
+              </div>
+              <div className="font-mono text-lg text-violet-300">
+                {stats.waveFrontWidth} <span className="text-xs text-zinc-500">cells wide</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Coherence Over Time Chart */}
       {historyRef.current.length > 1 && (

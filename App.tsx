@@ -11,7 +11,9 @@ import {
   CellState,
   Coordinate,
   SimulationConfig,
-  SimulationStats
+  SimulationStats,
+  CellMetadata,
+  VisualizationMode
 } from './types';
 import {
   K_STAR,
@@ -44,11 +46,19 @@ const App: React.FC = () => {
   const [annihilated, setAnnihilated] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>('default');
+  const [cellMetadata, setCellMetadata] = useState<CellMetadata[][]>(() =>
+    createGrid(DEFAULT_GRID_SIZE).map(row =>
+      row.map(() => ({ flippedAtStep: -1, generation: -1, flipCount: 0 }))
+    )
+  );
 
   // Refs for animation loop stability
   const queueRef = useRef<Coordinate[]>([]);
   const gridRef = useRef<CellState[][]>(grid);
   const configRef = useRef(config);
+  const metadataRef = useRef<CellMetadata[][]>(cellMetadata);
+  const generationMapRef = useRef<Map<string, number>>(new Map()); // Track generation per cell
 
   // Sync refs
   useEffect(() => { configRef.current = config; }, [config]);
@@ -64,6 +74,9 @@ const App: React.FC = () => {
     gridRef.current = newGrid;
     setQueue([]);
     queueRef.current = [];
+    setCellMetadata(newGrid.map(row =>
+      row.map(() => ({ flippedAtStep: -1, generation: -1, flipCount: 0 }))
+    ));
     setStats({ steps: 0, coherence: 1, activeSeams: 0 });
   }, [config.gridSize]);
 
@@ -74,6 +87,10 @@ const App: React.FC = () => {
     // Start from center
     const center = Math.floor(config.gridSize / 2);
     const startNode: Coordinate = { row: center, col: center };
+
+    // Initialize generation tracking
+    generationMapRef.current = new Map();
+    generationMapRef.current.set(`${startNode.row},${startNode.col}`, 0);
 
     setQueue([startNode]);
     queueRef.current = [startNode];
@@ -99,7 +116,7 @@ const App: React.FC = () => {
   // Simulation Step
   const stepSimulation = useCallback(() => {
     const currentQueue = queueRef.current;
-    
+
     if (currentQueue.length === 0) {
       setIsRunning(false);
       // Check annihilation
@@ -109,20 +126,32 @@ const App: React.FC = () => {
       return;
     }
 
-    // Process a "wave" (first N items or just 1? Python script did 1. 
+    // Process a "wave" (first N items or just 1? Python script did 1.
     // To make it look good in React, let's process 1 but fast, or a batch.)
     // Let's process 1 item per tick for clear propagation visualization.
-    
+
     const [currentNode, ...remainingQueue] = currentQueue;
     const { row, col } = currentNode;
-    
+
+    // Get current generation of this cell
+    const currentGeneration = generationMapRef.current.get(`${row},${col}`) || 0;
+
     // Mutate copy of grid
     const newGrid = gridRef.current.map(r => [...r]);
     const oldVal = newGrid[row][col];
-    
+
     // Flip self
     newGrid[row][col] *= -1;
-    
+
+    // Update metadata for current cell
+    const newMetadata = metadataRef.current.map(r => [...r]);
+    const currentStep = stats.steps + 1;
+    newMetadata[row][col] = {
+      flippedAtStep: currentStep,
+      generation: currentGeneration,
+      flipCount: newMetadata[row][col].flipCount + 1
+    };
+
     // Check neighbors
     const neighbors = getNeighbors(currentNode, configRef.current.gridSize);
     const newInQueue: Coordinate[] = [];
@@ -139,9 +168,11 @@ const App: React.FC = () => {
           // In a large simulation, use a Set for lookup. For < 50x50, Array.some is fine.
           const inRest = remainingQueue.some(q => q.row === n.row && q.col === n.col);
           const inNew = newInQueue.some(q => q.row === n.row && q.col === n.col);
-          
+
           if (!inRest && !inNew) {
             newInQueue.push(n);
+            // Set generation for newly queued cell
+            generationMapRef.current.set(`${n.row},${n.col}`, currentGeneration + 1);
           }
         }
       }
@@ -150,17 +181,25 @@ const App: React.FC = () => {
     // Update Refs
     gridRef.current = newGrid;
     queueRef.current = [...remainingQueue, ...newInQueue];
+    metadataRef.current = newMetadata;
+
+    // Calculate propagation velocity (cells flipped per step - rolling average)
+    const propagationVelocity = newInQueue.length;
+    const waveFrontWidth = queueRef.current.length;
 
     // Update State
     setGrid(newGrid);
     setQueue(queueRef.current);
+    setCellMetadata(newMetadata);
     setStats(prev => ({
       steps: prev.steps + 1,
       coherence: calculateCoherence(newGrid),
-      activeSeams: queueRef.current.length
+      activeSeams: queueRef.current.length,
+      propagationVelocity,
+      waveFrontWidth
     }));
 
-  }, []);
+  }, [stats.steps]);
 
   // Step Forward (single tick)
   const handleStepForward = useCallback(() => {
@@ -256,7 +295,13 @@ const App: React.FC = () => {
         {/* Main Grid */}
         <div className="relative z-0 flex flex-col items-center w-full">
             <div className="mb-8 relative w-full flex justify-center">
-               <GridVisualizer grid={grid} activeCells={queue} />
+               <GridVisualizer
+                 grid={grid}
+                 activeCells={queue}
+                 cellMetadata={cellMetadata}
+                 visualizationMode={visualizationMode}
+                 onVisualizationModeChange={setVisualizationMode}
+               />
                
                {/* Center Marker Hint (Only at start) */}
                {!isRunning && stats.steps === 0 && (

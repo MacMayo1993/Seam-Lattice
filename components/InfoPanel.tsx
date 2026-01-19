@@ -5,6 +5,8 @@ import { K_STAR } from '../constants';
 export const InfoPanel: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     analogy: true,
+    whyMatters: false,
+    theMath: false,
     science: false,
     details: false
   });
@@ -48,6 +50,102 @@ export const InfoPanel: React.FC = () => {
               Neighboring beliefs must also flip to stay consistent. When the whole grid turns one
               color, the internal conflict is resolved (Annihilation).
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* Why This Matters - Collapsible */}
+      <div className="bg-emerald-900/20 border border-emerald-500/20 rounded-lg overflow-hidden">
+        <button
+          onClick={() => toggleSection('whyMatters')}
+          className="w-full p-4 flex items-center justify-between text-left hover:bg-emerald-900/10 transition-colors"
+          aria-expanded={expandedSections.whyMatters}
+        >
+          <h4 className="flex items-center gap-2 font-bold text-emerald-300">
+            <Lightbulb size={16} />
+            Why This Matters
+          </h4>
+          {expandedSections.whyMatters ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+        {expandedSections.whyMatters && (
+          <div className="px-4 pb-4 space-y-3">
+            <p className="text-emerald-100/90 font-medium">
+              <strong>The Core Question:</strong> How does understanding emerge from information?
+            </p>
+            <p className="text-xs text-emerald-200/80">
+              This simulation models the discrete nature of cognitive breakthroughs ("A-ha moments").
+              Key insights:
+            </p>
+            <ul className="list-disc list-inside space-y-1 ml-1 text-xs text-emerald-200/80">
+              <li><strong>Information accumulates continuously</strong> (neighbors influencing neighbors)</li>
+              <li><strong>Understanding flips discretely</strong> (cells change state all-at-once)</li>
+              <li><strong>There's a threshold</strong> (k*) where enough information triggers change</li>
+              <li><strong>Resolution propagates</strong> (one insight leads to others)</li>
+            </ul>
+            <div className="bg-emerald-950/30 border border-emerald-500/20 rounded p-3 mt-3">
+              <p className="text-xs font-bold text-emerald-300 mb-2">Real-World Parallels:</p>
+              <ul className="list-disc list-inside space-y-1 text-xs text-emerald-200/70">
+                <li>Learning a difficult concept (suddenly "gets it")</li>
+                <li>Paradigm shifts in science (Kuhn's revolutions)</li>
+                <li>Opinion change cascades (viral ideas)</li>
+                <li>Phase transitions in physics (ice → water)</li>
+                <li>Consensus formation in social networks</li>
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* The Math Behind It - Collapsible */}
+      <div className="bg-violet-900/20 border border-violet-500/20 rounded-lg overflow-hidden">
+        <button
+          onClick={() => toggleSection('theMath')}
+          className="w-full p-4 flex items-center justify-between text-left hover:bg-violet-900/10 transition-colors"
+          aria-expanded={expandedSections.theMath}
+        >
+          <h4 className="flex items-center gap-2 font-bold text-violet-300">
+            <BookOpen size={16} />
+            The Math Behind It
+          </h4>
+          {expandedSections.theMath ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+        {expandedSections.theMath && (
+          <div className="px-4 pb-4 space-y-3">
+            <div className="space-y-2">
+              <p className="text-violet-200 font-bold text-sm">Propagation Rule:</p>
+              <ol className="list-decimal list-inside space-y-1 text-xs text-violet-200/80 ml-2">
+                <li>For each active cell at (row, col):</li>
+                <li className="ml-4">Flip its own state: +1 → -1 or -1 → +1</li>
+                <li className="ml-4">Check 4 neighbors (toroidal wrapping)</li>
+                <li className="ml-4">For each neighbor matching OLD state:</li>
+                <li className="ml-8">Propagate if: <code className="bg-violet-950/50 px-1 rounded">random() &gt; (k* - bias)</code></li>
+              </ol>
+            </div>
+
+            <div className="bg-violet-950/30 border border-violet-500/20 rounded p-3">
+              <p className="text-violet-300 font-bold text-xs mb-2">Why k* ≈ 0.618?</p>
+              <p className="text-xs text-violet-200/80">
+                This is the <strong>percolation threshold</strong> for a 2D square lattice with
+                entropy-driven propagation. It's related to the golden ratio φ ≈ 1.618 (reciprocal: 1/φ ≈ 0.618).
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-xs text-violet-200/70 mt-2 ml-2">
+                <li><strong>Below k*:</strong> Cascades die out (subcritical)</li>
+                <li><strong>At k*:</strong> Critical point - unpredictable behavior</li>
+                <li><strong>Above k*:</strong> Cascades spread indefinitely (supercritical)</li>
+              </ul>
+            </div>
+
+            <div className="bg-violet-950/30 border border-violet-500/20 rounded p-3">
+              <p className="text-violet-300 font-bold text-xs mb-2">Coherence Metric:</p>
+              <p className="text-xs font-mono text-violet-200/90 mb-1">
+                Coherence = |positive - negative| / total
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-xs text-violet-200/70 ml-2">
+                <li><strong>1.0:</strong> Perfect order (all same state)</li>
+                <li><strong>0.5:</strong> Partial organization</li>
+                <li><strong>0.0:</strong> Maximum disorder (perfect 50/50 split)</li>
+              </ul>
+            </div>
           </div>
         )}
       </div>
@@ -123,17 +221,33 @@ export const InfoPanel: React.FC = () => {
             <h3 className="text-xl font-bold text-zinc-100 mb-4">Learn More</h3>
             <div className="space-y-4 text-sm text-zinc-300">
               <p>
-                This visualization is based on concepts from topology and discrete mathematics,
-                particularly non-orientable surfaces and phase transitions in lattice systems.
+                This visualization models <strong>discrete understanding emergence</strong> using concepts
+                from topology, percolation theory, and cognitive science.
               </p>
+
+              <div className="bg-indigo-950/50 border border-indigo-500/30 rounded p-3 space-y-2">
+                <h4 className="font-bold text-indigo-300 text-sm">The Deep Theory</h4>
+                <p className="text-xs text-indigo-200/80">
+                  The "seam" represents the <strong>boundary of incompatible states</strong>. In non-orientable
+                  topology (like the Klein bottle), you can't consistently define "inside" vs "outside" everywhere.
+                  Similarly, this simulation shows how local consistency (cell flips) creates global resolution
+                  (annihilation).
+                </p>
+                <p className="text-xs text-indigo-200/80">
+                  This models cognitive breakthroughs: beliefs don't have absolute truth values, understanding
+                  involves resolving contradictions, and resolution happens discretely, not gradually.
+                </p>
+              </div>
+
               <div className="space-y-2">
-                <h4 className="font-bold text-zinc-100">Related Topics:</h4>
+                <h4 className="font-bold text-zinc-100">Related Concepts:</h4>
                 <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>Möbius Strip (one-sided surface)</li>
-                  <li>Klein Bottle (non-orientable surface)</li>
-                  <li>Toroidal Topology (wrapping boundaries)</li>
-                  <li>Percolation Theory</li>
-                  <li>Cellular Automata</li>
+                  <li><strong>Möbius Strip:</strong> One-sided surface (topology)</li>
+                  <li><strong>Klein Bottle:</strong> Non-orientable 4D surface</li>
+                  <li><strong>Toroidal Topology:</strong> Wrapping boundaries (this simulation)</li>
+                  <li><strong>Percolation Theory:</strong> Critical thresholds in networks</li>
+                  <li><strong>Cellular Automata:</strong> Local rules → global patterns</li>
+                  <li><strong>Phase Transitions:</strong> Discrete state changes (k* threshold)</li>
                 </ul>
               </div>
               <div className="space-y-2">

@@ -19,4 +19,15 @@ export interface SimulationStats {
   steps: number;
   coherence: number; // A measure of uniformity (-1 to 1)
   activeSeams: number; // Size of the queue
+  propagationVelocity?: number; // Cells flipped per step
+  waveFrontWidth?: number; // Number of active cells in queue
+  predictedAnnihilation?: number; // Estimated steps to completion
 }
+
+export interface CellMetadata {
+  flippedAtStep: number;
+  generation: number;
+  flipCount: number;
+}
+
+export type VisualizationMode = 'default' | 'wave-pattern' | 'time-heatmap' | 'generation';

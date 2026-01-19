@@ -1,15 +1,24 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { CellState, Coordinate } from '../types';
+import { CellState, Coordinate, CellMetadata, VisualizationMode } from '../types';
 import { COLORS } from '../constants';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Layers, Eye } from 'lucide-react';
 
 interface GridVisualizerProps {
   grid: CellState[][];
   activeCells: Coordinate[]; // Cells currently in the processing queue
+  cellMetadata?: CellMetadata[][];
+  visualizationMode?: VisualizationMode;
+  onVisualizationModeChange?: (mode: VisualizationMode) => void;
 }
 
-export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCells }) => {
+export const GridVisualizer: React.FC<GridVisualizerProps> = ({
+  grid,
+  activeCells,
+  cellMetadata,
+  visualizationMode = 'default',
+  onVisualizationModeChange
+}) => {
   const size = grid.length;
 
   // Optimize active lookup
@@ -20,13 +29,63 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
   }, [activeCells]);
 
   // Dynamic sizing based on grid size (mobile-responsive)
-  const { maxWidth, gap, minCellSize } = useMemo(() => {
+  const { maxWidth, gap, minCellSize} = useMemo(() => {
     // Mobile-first approach: smaller max widths that fit on screens
     if (size <= 15) return { maxWidth: 'min(600px, 90vw)', gap: 'gap-2', minCellSize: 32 };
     if (size <= 25) return { maxWidth: 'min(700px, 90vw)', gap: 'gap-1.5', minCellSize: 24 };
     if (size <= 35) return { maxWidth: 'min(850px, 90vw)', gap: 'gap-1', minCellSize: 20 };
     return { maxWidth: 'min(1000px, 90vw)', gap: 'gap-0.5', minCellSize: 16 };
   }, [size]);
+
+  // Get color based on visualization mode
+  const getCellColor = (row: number, col: number, cellState: CellState): string => {
+    if (!cellMetadata || visualizationMode === 'default') {
+      return cellState === CellState.POSITIVE ? COLORS.POSITIVE : COLORS.NEGATIVE;
+    }
+
+    const metadata = cellMetadata[row][col];
+
+    if (visualizationMode === 'wave-pattern' || visualizationMode === 'generation') {
+      // Color by generation
+      const gen = metadata.generation;
+      if (gen === -1) {
+        // Not flipped yet
+        return cellState === CellState.POSITIVE ? COLORS.POSITIVE : COLORS.NEGATIVE;
+      }
+
+      // Wave pattern colors - gradient from white (gen 0) to red/blue
+      const colors = [
+        'bg-white', // Gen 0 - spark
+        'bg-yellow-300', // Gen 1
+        'bg-orange-400', // Gen 2
+        'bg-rose-500', // Gen 3
+        'bg-red-600', // Gen 4
+        'bg-purple-600', // Gen 5+
+      ];
+      return colors[Math.min(gen, colors.length - 1)];
+    }
+
+    if (visualizationMode === 'time-heatmap') {
+      // Color by time since flip
+      const flipped = metadata.flippedAtStep;
+      if (flipped === -1) {
+        return 'bg-zinc-800'; // Never flipped
+      }
+      // Fade from bright to dark based on time
+      const heatColors = [
+        'bg-cyan-300',
+        'bg-cyan-500',
+        'bg-blue-500',
+        'bg-indigo-600',
+        'bg-purple-700',
+        'bg-zinc-700'
+      ];
+      // Map flippedAtStep to heat level (more recent = brighter)
+      return heatColors[Math.min(Math.floor(flipped / 10), heatColors.length - 1)];
+    }
+
+    return cellState === CellState.POSITIVE ? COLORS.POSITIVE : COLORS.NEGATIVE;
+  };
 
   return (
     <TransformWrapper
@@ -37,6 +96,45 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
     >
       {({ zoomIn, zoomOut, resetTransform }) => (
         <>
+          {/* Visualization Mode Toggle */}
+          {onVisualizationModeChange && (
+            <div className="flex gap-2 mb-3 justify-center flex-wrap">
+              <button
+                onClick={() => onVisualizationModeChange('default')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border text-xs font-medium min-h-[40px] touch-manipulation ${
+                  visualizationMode === 'default'
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                <Eye size={14} />
+                <span>Default</span>
+              </button>
+              <button
+                onClick={() => onVisualizationModeChange('wave-pattern')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border text-xs font-medium min-h-[40px] touch-manipulation ${
+                  visualizationMode === 'wave-pattern'
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                <Layers size={14} />
+                <span>Wave Pattern</span>
+              </button>
+              <button
+                onClick={() => onVisualizationModeChange('time-heatmap')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border text-xs font-medium min-h-[40px] touch-manipulation ${
+                  visualizationMode === 'time-heatmap'
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                <Layers size={14} />
+                <span>Time Heatmap</span>
+              </button>
+            </div>
+          )}
+
           {/* Zoom Controls - Touch-friendly */}
           <div className="flex gap-2 mb-4 justify-center flex-wrap">
             <button
@@ -79,13 +177,19 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
       {grid.map((row, rIndex) => (
         row.map((cellState, cIndex) => {
           const isActive = activeSet.has(`${rIndex},${cIndex}`);
-          const colorClass = cellState === CellState.POSITIVE ? COLORS.POSITIVE : COLORS.NEGATIVE;
+          const colorClass = getCellColor(rIndex, cIndex, cellState);
           const isNegative = cellState === CellState.NEGATIVE;
+          const metadata = cellMetadata?.[rIndex]?.[cIndex];
 
           // Scale effects based on grid size
           const ringSize = size > 35 ? 'ring-2' : size > 25 ? 'ring-3' : 'ring-4';
           const scaleActive = size > 35 ? 1.1 : size > 25 ? 1.15 : 1.25;
           const showInnerDot = size <= 35; // Hide dot on very large grids
+
+          // Create tooltip content
+          const tooltipContent = metadata
+            ? `Cell (${rIndex}, ${cIndex})\nState: ${cellState > 0 ? 'A (+1)' : 'B (-1)'}\nGeneration: ${metadata.generation >= 0 ? metadata.generation : 'Not reached'}\nFlipped at step: ${metadata.flippedAtStep >= 0 ? metadata.flippedAtStep : 'Never'}\nFlip count: ${metadata.flipCount}`
+            : `(${rIndex}, ${cIndex}) ${cellState > 0 ? '+' : '-'}`;
 
           return (
             <div
@@ -100,9 +204,9 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
                 }
               `}
               style={{
-                transform: `rotateY(${isNegative ? 180 : 0}deg) scale(${isActive ? scaleActive : 1})`,
+                transform: `rotateY(${isNegative && visualizationMode === 'default' ? 180 : 0}deg) scale(${isActive ? scaleActive : 1})`,
               }}
-              title={`(${rIndex}, ${cIndex}) ${cellState > 0 ? '+' : '-'}`}
+              title={tooltipContent}
               role="gridcell"
               aria-label={`Cell ${rIndex},${cIndex} - State ${cellState > 0 ? 'A' : 'B'}${isActive ? ' - Active' : ''}`}
             >
