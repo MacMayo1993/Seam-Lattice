@@ -96,83 +96,42 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({
     >
       {({ zoomIn, zoomOut, resetTransform }) => (
         <>
-          {/* Toroidal Topology Badge */}
-          <div className="flex justify-center mb-3">
-            <div
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-lg"
-              title="Edges wrap around: top↔bottom, left↔right. No boundaries!"
-            >
-              <Repeat size={16} className="text-purple-400" />
-              <span className="text-xs font-semibold text-purple-300">Toroidal Topology</span>
-              <span className="text-xs text-purple-400/70 hidden sm:inline">• Edges wrap around</span>
-            </div>
-          </div>
-
-          {/* Visualization Mode Toggle */}
-          {onVisualizationModeChange && (
-            <div className="flex gap-2 mb-3 justify-center flex-wrap">
-              <button
-                onClick={() => onVisualizationModeChange('default')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border text-xs font-medium min-h-[40px] touch-manipulation ${
-                  visualizationMode === 'default'
-                    ? 'bg-indigo-600 border-indigo-500 text-white'
-                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
-                }`}
-              >
-                <Eye size={14} />
-                <span>Default</span>
-              </button>
-              <button
-                onClick={() => onVisualizationModeChange('wave-pattern')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border text-xs font-medium min-h-[40px] touch-manipulation ${
-                  visualizationMode === 'wave-pattern'
-                    ? 'bg-indigo-600 border-indigo-500 text-white'
-                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
-                }`}
-              >
-                <Layers size={14} />
-                <span>Wave Pattern</span>
-              </button>
-              <button
-                onClick={() => onVisualizationModeChange('time-heatmap')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border text-xs font-medium min-h-[40px] touch-manipulation ${
-                  visualizationMode === 'time-heatmap'
-                    ? 'bg-indigo-600 border-indigo-500 text-white'
-                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
-                }`}
-              >
-                <Layers size={14} />
-                <span>Time Heatmap</span>
-              </button>
-            </div>
-          )}
-
-          {/* Zoom Controls - Touch-friendly */}
-          <div className="flex gap-2 mb-4 justify-center flex-wrap">
+          {/* Zoom Controls - Compact horizontal bar above lattice */}
+          <div className="flex gap-2 mb-3 justify-center items-center flex-wrap">
             <button
               onClick={() => zoomIn()}
-              className="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 min-h-[44px] touch-manipulation"
+              className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 text-xs"
               aria-label="Zoom in"
             >
-              <ZoomIn size={18} />
-              <span className="hidden sm:inline">Zoom In</span>
+              <ZoomIn size={14} />
+              <span>Zoom In</span>
             </button>
             <button
               onClick={() => zoomOut()}
-              className="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 min-h-[44px] touch-manipulation"
+              className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 text-xs"
               aria-label="Zoom out"
             >
-              <ZoomOut size={18} />
-              <span className="hidden sm:inline">Zoom Out</span>
+              <ZoomOut size={14} />
+              <span>Zoom Out</span>
             </button>
             <button
               onClick={() => resetTransform()}
-              className="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 min-h-[44px] touch-manipulation"
+              className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 text-xs"
               aria-label="Reset zoom"
             >
-              <RotateCcw size={18} />
-              <span className="hidden sm:inline">Reset</span>
+              <RotateCcw size={14} />
+              <span>Reset</span>
             </button>
+
+            {/* Toroidal Topology Badge - Inline */}
+            <div className="h-6 w-px bg-zinc-700 mx-1"></div>
+            <div
+              className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-lg"
+              title="Edges wrap around: top↔bottom, left↔right. No boundaries!"
+            >
+              <Repeat size={14} className="text-purple-400" />
+              <span className="text-xs font-semibold text-purple-300">Toroidal</span>
+            </div>
           </div>
 
           <TransformComponent>
@@ -236,6 +195,45 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({
       ))}
             </div>
           </TransformComponent>
+
+          {/* Visualization Mode Toggle - Below lattice */}
+          {onVisualizationModeChange && (
+            <div className="flex gap-2 mt-3 justify-center flex-wrap">
+              <button
+                onClick={() => onVisualizationModeChange('default')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border text-xs font-medium ${
+                  visualizationMode === 'default'
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                <Eye size={14} />
+                <span>Default</span>
+              </button>
+              <button
+                onClick={() => onVisualizationModeChange('wave-pattern')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border text-xs font-medium ${
+                  visualizationMode === 'wave-pattern'
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                <Layers size={14} />
+                <span>Wave Pattern</span>
+              </button>
+              <button
+                onClick={() => onVisualizationModeChange('time-heatmap')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all border text-xs font-medium ${
+                  visualizationMode === 'time-heatmap'
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                <Layers size={14} />
+                <span>Time Heatmap</span>
+              </button>
+            </div>
+          )}
         </>
       )}
     </TransformWrapper>
