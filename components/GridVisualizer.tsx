@@ -19,12 +19,13 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
     return set;
   }, [activeCells]);
 
-  // Dynamic sizing based on grid size
+  // Dynamic sizing based on grid size (mobile-responsive)
   const { maxWidth, gap, minCellSize } = useMemo(() => {
-    if (size <= 15) return { maxWidth: '600px', gap: 'gap-2', minCellSize: 32 };
-    if (size <= 25) return { maxWidth: '700px', gap: 'gap-1.5', minCellSize: 24 };
-    if (size <= 35) return { maxWidth: '850px', gap: 'gap-1', minCellSize: 20 };
-    return { maxWidth: '1000px', gap: 'gap-0.5', minCellSize: 16 };
+    // Mobile-first approach: smaller max widths that fit on screens
+    if (size <= 15) return { maxWidth: 'min(600px, 90vw)', gap: 'gap-2', minCellSize: 32 };
+    if (size <= 25) return { maxWidth: 'min(700px, 90vw)', gap: 'gap-1.5', minCellSize: 24 };
+    if (size <= 35) return { maxWidth: 'min(850px, 90vw)', gap: 'gap-1', minCellSize: 20 };
+    return { maxWidth: 'min(1000px, 90vw)', gap: 'gap-0.5', minCellSize: 16 };
   }, [size]);
 
   return (
@@ -36,37 +37,37 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
     >
       {({ zoomIn, zoomOut, resetTransform }) => (
         <>
-          {/* Zoom Controls */}
-          <div className="flex gap-2 mb-4 justify-center">
+          {/* Zoom Controls - Touch-friendly */}
+          <div className="flex gap-2 mb-4 justify-center flex-wrap">
             <button
               onClick={() => zoomIn()}
-              className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all border border-zinc-700"
+              className="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 min-h-[44px] touch-manipulation"
               aria-label="Zoom in"
             >
-              <ZoomIn size={16} />
-              Zoom In
+              <ZoomIn size={18} />
+              <span className="hidden sm:inline">Zoom In</span>
             </button>
             <button
               onClick={() => zoomOut()}
-              className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all border border-zinc-700"
+              className="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 min-h-[44px] touch-manipulation"
               aria-label="Zoom out"
             >
-              <ZoomOut size={16} />
-              Zoom Out
+              <ZoomOut size={18} />
+              <span className="hidden sm:inline">Zoom Out</span>
             </button>
             <button
               onClick={() => resetTransform()}
-              className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all border border-zinc-700"
+              className="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 min-h-[44px] touch-manipulation"
               aria-label="Reset zoom"
             >
-              <RotateCcw size={16} />
-              Reset
+              <RotateCcw size={18} />
+              <span className="hidden sm:inline">Reset</span>
             </button>
           </div>
 
           <TransformComponent>
             <div
-              className={`grid ${gap} p-6 bg-zinc-950 rounded-2xl border border-zinc-800 shadow-2xl transition-all duration-500`}
+              className={`grid ${gap} p-3 sm:p-6 bg-zinc-950 rounded-xl sm:rounded-2xl border border-zinc-800 shadow-2xl transition-all duration-500`}
               style={{
                 gridTemplateColumns: `repeat(${size}, minmax(${minCellSize}px, 1fr))`,
                 aspectRatio: '1 / 1',
