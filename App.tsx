@@ -55,6 +55,7 @@ const App: React.FC = () => {
 
   // Refs for animation loop stability
   const queueRef = useRef<Coordinate[]>([]);
+  const queueSetRef = useRef<Set<string>>(new Set()); // Track cells in queue for O(1) lookup
   const gridRef = useRef<CellState[][]>(grid);
   const configRef = useRef(config);
   const metadataRef = useRef<CellMetadata[][]>(cellMetadata);
@@ -74,6 +75,7 @@ const App: React.FC = () => {
     gridRef.current = newGrid;
     setQueue([]);
     queueRef.current = [];
+    queueSetRef.current = new Set();
     setCellMetadata(newGrid.map(row =>
       row.map(() => ({ flippedAtStep: -1, generation: -1, flipCount: 0 }))
     ));
@@ -94,6 +96,7 @@ const App: React.FC = () => {
 
     setQueue([startNode]);
     queueRef.current = [startNode];
+    queueSetRef.current = new Set([`${startNode.row},${startNode.col}`]);
     setIsRunning(true);
   }, [config.gridSize, handleReset]);
 
@@ -106,6 +109,7 @@ const App: React.FC = () => {
     gridRef.current = newGrid;
     setQueue([]);
     queueRef.current = [];
+    queueSetRef.current = new Set();
     setStats({
       steps: 0,
       coherence: calculateCoherence(newGrid),
@@ -132,9 +136,13 @@ const App: React.FC = () => {
 
     const [currentNode, ...remainingQueue] = currentQueue;
     const { row, col } = currentNode;
+    const currentKey = `${row},${col}`;
+
+    // Remove current node from the set
+    queueSetRef.current.delete(currentKey);
 
     // Get current generation of this cell
-    const currentGeneration = generationMapRef.current.get(`${row},${col}`) || 0;
+    const currentGeneration = generationMapRef.current.get(currentKey) || 0;
 
     // Mutate copy of grid
     const newGrid = gridRef.current.map(r => [...r]);
@@ -164,15 +172,14 @@ const App: React.FC = () => {
         // Random check
         const kStarAdjusted = configRef.current.thresholdK - configRef.current.propagationBias;
         if (Math.random() > kStarAdjusted) {
-          // Check if already in queue to prevent duplicates (simple check)
-          // In a large simulation, use a Set for lookup. For < 50x50, Array.some is fine.
-          const inRest = remainingQueue.some(q => q.row === n.row && q.col === n.col);
-          const inNew = newInQueue.some(q => q.row === n.row && q.col === n.col);
+          // Check if already in queue using Set for O(1) lookup
+          const neighborKey = `${n.row},${n.col}`;
 
-          if (!inRest && !inNew) {
+          if (!queueSetRef.current.has(neighborKey)) {
             newInQueue.push(n);
+            queueSetRef.current.add(neighborKey);
             // Set generation for newly queued cell
-            generationMapRef.current.set(`${n.row},${n.col}`, currentGeneration + 1);
+            generationMapRef.current.set(neighborKey, currentGeneration + 1);
           }
         }
       }
