@@ -95,13 +95,6 @@ const App: React.FC = () => {
     });
   }, [config.gridSize]);
 
-  // Step Forward (single tick)
-  const handleStepForward = useCallback(() => {
-    if (!isRunning) {
-      stepSimulation();
-    }
-  }, [isRunning, stepSimulation]);
-
   // Simulation Step
   const stepSimulation = useCallback(() => {
     const currentQueue = queueRef.current;
@@ -167,6 +160,13 @@ const App: React.FC = () => {
     }));
 
   }, []);
+
+  // Step Forward (single tick)
+  const handleStepForward = useCallback(() => {
+    if (!isRunning) {
+      stepSimulation();
+    }
+  }, [isRunning, stepSimulation]);
 
   // Animation Loop
   useEffect(() => {
