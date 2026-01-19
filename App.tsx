@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { RotateCcw, Zap, Sun, Moon } from 'lucide-react';
+import { RotateCcw, Zap, Sun, Moon, Menu, X } from 'lucide-react';
 import {
   createGrid,
   getNeighbors,
@@ -43,6 +43,7 @@ const App: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [annihilated, setAnnihilated] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Refs for animation loop stability
   const queueRef = useRef<Coordinate[]>([]);
@@ -179,10 +180,36 @@ const App: React.FC = () => {
 
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-gray-50 text-gray-900'} flex flex-col md:flex-row font-sans selection:bg-rose-500/30 transition-colors duration-300`}>
+    <div className={`min-h-screen ${isDarkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-gray-50 text-gray-900'} flex flex-col md:flex-row font-sans selection:bg-rose-500/30 transition-colors duration-300 relative`}>
+
+      {/* Mobile Menu Toggle Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className={`md:hidden fixed top-4 left-4 z-50 p-3 rounded-lg ${isDarkMode ? 'bg-zinc-800 text-zinc-100' : 'bg-white text-gray-900'} shadow-2xl border ${isDarkMode ? 'border-zinc-700' : 'border-gray-200'} transition-all hover:scale-105`}
+        aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+      >
+        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Mobile Backdrop Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-label="Close menu"
+        />
+      )}
 
       {/* Left Panel: Controls & Info */}
-      <div className={`w-full md:w-1/3 min-w-[350px] border-r ${isDarkMode ? 'border-zinc-800 bg-zinc-950' : 'border-gray-200 bg-white'} flex flex-col h-screen overflow-y-auto custom-scrollbar z-20 shadow-2xl`}>
+      <div className={`
+        w-full md:w-1/3 md:min-w-[350px] md:max-w-[400px]
+        ${isDarkMode ? 'border-zinc-800 bg-zinc-950' : 'border-gray-200 bg-white'}
+        flex flex-col h-screen overflow-y-auto custom-scrollbar z-40 shadow-2xl
+        md:relative md:translate-x-0
+        fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        border-r
+      `}>
         <div className="p-6 md:p-8 flex-1 flex flex-col gap-6">
           <header className="flex items-start justify-between">
             <div>
@@ -266,23 +293,64 @@ const App: React.FC = () => {
             )}
         </div>
 
-        {/* Legend Overlay */}
-        <div className="absolute bottom-8 left-8 right-8 flex justify-center pointer-events-none">
-          <div className={`${isDarkMode ? 'bg-zinc-900/90 border-zinc-800 text-zinc-300' : 'bg-white/90 border-gray-300 text-gray-700'} backdrop-blur border rounded-full px-6 py-3 shadow-xl flex items-center gap-6 pointer-events-auto transition-colors duration-300`}>
-             <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-                <span className="text-xs font-medium">State A</span>
+        {/* Legend Overlay - Responsive */}
+        <div className="absolute bottom-4 md:bottom-8 left-4 md:left-8 right-4 md:right-8 flex justify-center pointer-events-none">
+          <div className={`${isDarkMode ? 'bg-zinc-900/90 border-zinc-800 text-zinc-300' : 'bg-white/90 border-gray-300 text-gray-700'} backdrop-blur border rounded-full px-3 md:px-6 py-2 md:py-3 shadow-xl flex flex-col sm:flex-row items-center gap-2 sm:gap-6 pointer-events-auto transition-colors duration-300 text-xs`}>
+             <div className="flex items-center gap-4 sm:gap-6">
+               <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-rose-500"></div>
+                  <span className="font-medium">State A</span>
+               </div>
+               <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-blue-500"></div>
+                  <span className="font-medium">State B</span>
+               </div>
              </div>
+             <div className={`hidden sm:block w-px h-4 ${isDarkMode ? 'bg-zinc-700' : 'bg-gray-300'}`}></div>
              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span className="text-xs font-medium">State B</span>
-             </div>
-             <div className={`w-px h-4 ${isDarkMode ? 'bg-zinc-700' : 'bg-gray-300'}`}></div>
-             <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded border-2 border-white bg-rose-500 shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
-                <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>The Seam (Active Change)</span>
+                <div className="w-3 h-3 md:w-4 md:h-4 rounded border-2 border-white bg-rose-500 shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
+                <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Active Seam</span>
              </div>
           </div>
+        </div>
+
+        {/* Mobile Quick Actions - Floating Action Buttons */}
+        <div className="md:hidden fixed bottom-20 right-4 flex flex-col gap-3 z-30">
+          <button
+            onClick={() => {
+              handleIgnite();
+              setIsMobileMenuOpen(false);
+            }}
+            disabled={isRunning}
+            className="w-14 h-14 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-2xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+            aria-label="Ignite seam"
+          >
+            <Zap size={24} />
+          </button>
+          <button
+            onClick={() => {
+              setIsRunning(!isRunning);
+              setIsMobileMenuOpen(false);
+            }}
+            className={`w-14 h-14 rounded-full ${
+              isRunning
+                ? 'bg-amber-500 hover:bg-amber-400'
+                : 'bg-emerald-500 hover:bg-emerald-400'
+            } text-white shadow-2xl flex items-center justify-center transition-all active:scale-95`}
+            aria-label={isRunning ? 'Pause' : 'Play'}
+          >
+            {isRunning ? '⏸' : '▶'}
+          </button>
+          <button
+            onClick={() => {
+              handleReset();
+              setIsMobileMenuOpen(false);
+            }}
+            className={`w-14 h-14 rounded-full ${isDarkMode ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-gray-300 hover:bg-gray-400'} text-white shadow-2xl flex items-center justify-center transition-all active:scale-95`}
+            aria-label="Reset"
+          >
+            <RotateCcw size={20} />
+          </button>
         </div>
 
       </div>

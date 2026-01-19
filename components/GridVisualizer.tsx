@@ -19,6 +19,15 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
     return set;
   }, [activeCells]);
 
+  // Dynamic sizing based on grid size (mobile-responsive)
+  const { maxWidth, gap, minCellSize } = useMemo(() => {
+    // Mobile-first approach: smaller max widths that fit on screens
+    if (size <= 15) return { maxWidth: 'min(600px, 90vw)', gap: 'gap-2', minCellSize: 32 };
+    if (size <= 25) return { maxWidth: 'min(700px, 90vw)', gap: 'gap-1.5', minCellSize: 24 };
+    if (size <= 35) return { maxWidth: 'min(850px, 90vw)', gap: 'gap-1', minCellSize: 20 };
+    return { maxWidth: 'min(1000px, 90vw)', gap: 'gap-0.5', minCellSize: 16 };
+  }, [size]);
+
   return (
     <TransformWrapper
       initialScale={1}
@@ -28,41 +37,41 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
     >
       {({ zoomIn, zoomOut, resetTransform }) => (
         <>
-          {/* Zoom Controls */}
-          <div className="flex gap-2 mb-4 justify-center">
+          {/* Zoom Controls - Touch-friendly */}
+          <div className="flex gap-2 mb-4 justify-center flex-wrap">
             <button
               onClick={() => zoomIn()}
-              className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all border border-zinc-700"
+              className="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 min-h-[44px] touch-manipulation"
               aria-label="Zoom in"
             >
-              <ZoomIn size={16} />
-              Zoom In
+              <ZoomIn size={18} />
+              <span className="hidden sm:inline">Zoom In</span>
             </button>
             <button
               onClick={() => zoomOut()}
-              className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all border border-zinc-700"
+              className="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 min-h-[44px] touch-manipulation"
               aria-label="Zoom out"
             >
-              <ZoomOut size={16} />
-              Zoom Out
+              <ZoomOut size={18} />
+              <span className="hidden sm:inline">Zoom Out</span>
             </button>
             <button
               onClick={() => resetTransform()}
-              className="flex items-center gap-2 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all border border-zinc-700"
+              className="flex items-center gap-2 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-300 rounded-lg transition-all border border-zinc-700 min-h-[44px] touch-manipulation"
               aria-label="Reset zoom"
             >
-              <RotateCcw size={16} />
-              Reset
+              <RotateCcw size={18} />
+              <span className="hidden sm:inline">Reset</span>
             </button>
           </div>
 
           <TransformComponent>
             <div
-              className="grid gap-2 p-6 bg-zinc-950 rounded-2xl border border-zinc-800 shadow-2xl transition-all duration-500"
+              className={`grid ${gap} p-3 sm:p-6 bg-zinc-950 rounded-xl sm:rounded-2xl border border-zinc-800 shadow-2xl transition-all duration-500`}
               style={{
-                gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`,
+                gridTemplateColumns: `repeat(${size}, minmax(${minCellSize}px, 1fr))`,
                 aspectRatio: '1 / 1',
-                maxWidth: '700px',
+                maxWidth: maxWidth,
                 width: '100%',
                 perspective: '1200px'
               }}
@@ -72,7 +81,12 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
           const isActive = activeSet.has(`${rIndex},${cIndex}`);
           const colorClass = cellState === CellState.POSITIVE ? COLORS.POSITIVE : COLORS.NEGATIVE;
           const isNegative = cellState === CellState.NEGATIVE;
-          
+
+          // Scale effects based on grid size
+          const ringSize = size > 35 ? 'ring-2' : size > 25 ? 'ring-3' : 'ring-4';
+          const scaleActive = size > 35 ? 1.1 : size > 25 ? 1.15 : 1.25;
+          const showInnerDot = size <= 35; // Hide dot on very large grids
+
           return (
             <div
               key={`${rIndex}-${cIndex}`}
@@ -81,12 +95,12 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
                 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
                 ${colorClass}
                 ${isActive
-                  ? 'z-20 ring-4 ring-white/50 shadow-[0_0_30px_rgba(255,255,255,0.6)] animate-pulse'
+                  ? `z-20 ${ringSize} ring-white/50 shadow-[0_0_30px_rgba(255,255,255,0.6)] animate-pulse`
                   : 'opacity-90 hover:opacity-100'
                 }
               `}
               style={{
-                transform: `rotateY(${isNegative ? 180 : 0}deg) scale(${isActive ? 1.25 : 1})`,
+                transform: `rotateY(${isNegative ? 180 : 0}deg) scale(${isActive ? scaleActive : 1})`,
               }}
               title={`(${rIndex}, ${cIndex}) ${cellState > 0 ? '+' : '-'}`}
               role="gridcell"
@@ -96,8 +110,10 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({ grid, activeCell
               {isActive && (
                 <div className="absolute inset-0 rounded-md bg-white/20 animate-ping" />
               )}
-              {/* Inner dot for texture */}
-              <div className="w-1.5 h-1.5 rounded-full bg-black/10 dark:bg-white/10 relative z-10" />
+              {/* Inner dot for texture - only show on smaller grids */}
+              {showInnerDot && (
+                <div className="w-1.5 h-1.5 rounded-full bg-black/10 dark:bg-white/10 relative z-10" />
+              )}
             </div>
           );
         })
