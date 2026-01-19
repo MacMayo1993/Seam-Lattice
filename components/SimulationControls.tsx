@@ -1,7 +1,8 @@
 import React from 'react';
-import { Play, Pause, RefreshCw, Zap, Settings2, Shuffle, HelpCircle, SkipForward } from 'lucide-react';
+import { Play, Pause, RefreshCw, Zap, Settings2, Shuffle, HelpCircle, SkipForward, BookOpen } from 'lucide-react';
 import { SimulationConfig } from '../types';
 import { K_STAR } from '../constants';
+import { EXAMPLES, Example } from '../examples';
 
 interface ControlsProps {
   config: SimulationConfig;
@@ -25,12 +26,21 @@ export const SimulationControls: React.FC<ControlsProps> = ({
   onStepForward
 }) => {
   const [playbackSpeed, setPlaybackSpeed] = React.useState(1);
+  const [selectedExample, setSelectedExample] = React.useState<Example | null>(null);
+  const [showExampleInfo, setShowExampleInfo] = React.useState(false);
 
   const handleSpeedChange = (multiplier: number) => {
     setPlaybackSpeed(multiplier);
     // Adjust delay inversely (lower delay = faster)
     const baseDelay = 100;
     onUpdateConfig({ delay: baseDelay / multiplier });
+  };
+
+  const handleLoadExample = (example: Example) => {
+    setSelectedExample(example);
+    onUpdateConfig(example.config);
+    onReset();
+    setShowExampleInfo(true);
   };
 
   return (
@@ -76,6 +86,61 @@ export const SimulationControls: React.FC<ControlsProps> = ({
         >
           <RefreshCw size={18} />
         </button>
+      </div>
+
+      {/* Example Library */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-zinc-400 text-sm font-medium flex items-center gap-2">
+            <BookOpen size={16} />
+            Example Scenarios
+          </label>
+        </div>
+        <select
+          value={selectedExample?.id || ''}
+          onChange={(e) => {
+            const example = EXAMPLES.find(ex => ex.id === e.target.value);
+            if (example) handleLoadExample(example);
+          }}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:bg-zinc-750 transition-colors"
+        >
+          <option value="">Select an example...</option>
+          {EXAMPLES.map(example => (
+            <option key={example.id} value={example.id}>
+              {example.icon} {example.name}
+            </option>
+          ))}
+        </select>
+        {selectedExample && showExampleInfo && (
+          <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-lg p-3 space-y-2 animate-in fade-in duration-300">
+            <button
+              onClick={() => setShowExampleInfo(false)}
+              className="float-right text-zinc-500 hover:text-zinc-300 transition-colors"
+              aria-label="Close info"
+            >
+              ✕
+            </button>
+            <div className="text-xs space-y-2">
+              <p className="text-indigo-300 font-medium">{selectedExample.description}</p>
+              {selectedExample.setupInstructions && (
+                <div>
+                  <span className="text-zinc-400 font-bold">Instructions:</span>
+                  <p className="text-zinc-300 mt-1">{selectedExample.setupInstructions}</p>
+                </div>
+              )}
+              {selectedExample.expectedOutcome && (
+                <div>
+                  <span className="text-emerald-400 font-bold">Expected:</span>
+                  <p className="text-zinc-300 mt-1">{selectedExample.expectedOutcome}</p>
+                </div>
+              )}
+              <div className="pt-2 border-t border-indigo-500/20">
+                <span className="text-amber-400 font-bold">Learning Goal:</span>
+                <p className="text-zinc-300 mt-1">{selectedExample.learningGoal}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Secondary Actions */}
