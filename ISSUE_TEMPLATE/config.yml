@@ -1,8 +1,0 @@
-blank_issues_enabled: true
-contact_links:
-  - name: GitHub Discussions
-    url: https://github.com/MacMayo1993/Seam-Lattice/discussions
-    about: For general questions, ideas, or open-ended conversations
-  - name: Live Demo
-    url: https://macmayo1993.github.io/Seam-Lattice/
-    about: Try the interactive visualization before reporting issues
