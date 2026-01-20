@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { RotateCcw, Zap, Sun, Moon, Menu, X } from 'lucide-react';
+import { RotateCcw, Zap, Sun, Moon, Menu, X, PanelLeftClose, PanelLeft, Beaker, Grid3X3 } from 'lucide-react';
 import {
   createGrid,
   getNeighbors,
@@ -25,9 +25,15 @@ import { GridVisualizer } from './components/GridVisualizer';
 import { SimulationControls } from './components/SimulationControls';
 import { InfoPanel } from './components/InfoPanel';
 import { MetricsPanel } from './components/MetricsPanel';
+import { BottleMode } from './modes/bottle/BottleMode';
+
+type AppMode = 'lattice' | 'bottle';
 
 const App: React.FC = () => {
-  // --- State ---
+  // --- Mode State ---
+  const [appMode, setAppMode] = useState<AppMode>('lattice');
+
+  // --- Lattice State ---
   const [config, setConfig] = useState<SimulationConfig>({
     gridSize: DEFAULT_GRID_SIZE,
     thresholdK: K_STAR,
@@ -46,6 +52,7 @@ const App: React.FC = () => {
   const [annihilated, setAnnihilated] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [visualizationMode, setVisualizationMode] = useState<VisualizationMode>('default');
   const [cellMetadata, setCellMetadata] = useState<CellMetadata[][]>(() =>
     createGrid(DEFAULT_GRID_SIZE).map(row =>
@@ -60,64 +67,80 @@ const App: React.FC = () => {
   const configRef = useRef(config);
   const metadataRef = useRef<CellMetadata[][]>(cellMetadata);
   const generationMapRef = useRef<Map<string, number>>(new Map()); // Track generation per cell
+  const stepsRef = useRef(0); // Use ref to avoid recreating stepSimulation
 
   // Sync refs
   useEffect(() => { configRef.current = config; }, [config]);
+  useEffect(() => { stepsRef.current = stats.steps; }, [stats.steps]);
 
   // --- Logic ---
 
-  // Reset Logic
-  const handleReset = useCallback(() => {
+  // Reset Logic - accepts optional size override to avoid stale closure issues
+  const resetWithSize = useCallback((sizeOverride?: number) => {
+    const size = sizeOverride ?? configRef.current.gridSize;
     setIsRunning(false);
     setAnnihilated(false);
-    const newGrid = createGrid(config.gridSize);
+    const newGrid = createGrid(size);
     setGrid(newGrid);
     gridRef.current = newGrid;
     setQueue([]);
     queueRef.current = [];
     queueSetRef.current = new Set();
-    setCellMetadata(newGrid.map(row =>
+    stepsRef.current = 0;
+    const newMetadata = newGrid.map(row =>
       row.map(() => ({ flippedAtStep: -1, generation: -1, flipCount: 0 }))
-    ));
+    );
+    setCellMetadata(newMetadata);
+    metadataRef.current = newMetadata;
     setStats({ steps: 0, coherence: 1, activeSeams: 0 });
-  }, [config.gridSize]);
+  }, []);
+
+  // Wrapper for external calls that don't pass size
+  const handleReset = useCallback(() => {
+    resetWithSize(configRef.current.gridSize);
+  }, [resetWithSize]);
 
   // Ignite Logic (Start Cascade)
   const handleIgnite = useCallback(() => {
-    handleReset();
+    const size = configRef.current.gridSize;
+    resetWithSize(size);
 
-    // Start from center
-    const center = Math.floor(config.gridSize / 2);
-    const startNode: Coordinate = { row: center, col: center };
+    // Start from center - use setTimeout to ensure state is updated
+    setTimeout(() => {
+      const center = Math.floor(size / 2);
+      const startNode: Coordinate = { row: center, col: center };
 
-    // Initialize generation tracking
-    generationMapRef.current = new Map();
-    generationMapRef.current.set(`${startNode.row},${startNode.col}`, 0);
+      // Initialize generation tracking
+      generationMapRef.current = new Map();
+      generationMapRef.current.set(`${startNode.row},${startNode.col}`, 0);
 
-    setQueue([startNode]);
-    queueRef.current = [startNode];
-    queueSetRef.current = new Set([`${startNode.row},${startNode.col}`]);
-    setIsRunning(true);
-  }, [config.gridSize, handleReset]);
+      setQueue([startNode]);
+      queueRef.current = [startNode];
+      queueSetRef.current = new Set([`${startNode.row},${startNode.col}`]);
+      setIsRunning(true);
+    }, 0);
+  }, [resetWithSize]);
 
   // Randomize Grid
   const handleRandomize = useCallback(() => {
+    const size = configRef.current.gridSize;
     setIsRunning(false);
     setAnnihilated(false);
-    const newGrid = randomizeGrid(config.gridSize);
+    const newGrid = randomizeGrid(size);
     setGrid(newGrid);
     gridRef.current = newGrid;
     setQueue([]);
     queueRef.current = [];
     queueSetRef.current = new Set();
+    stepsRef.current = 0;
     setStats({
       steps: 0,
       coherence: calculateCoherence(newGrid),
       activeSeams: 0
     });
-  }, [config.gridSize]);
+  }, []);
 
-  // Simulation Step
+  // Simulation Step - uses refs to avoid recreating on every step
   const stepSimulation = useCallback(() => {
     const currentQueue = queueRef.current;
 
@@ -130,10 +153,7 @@ const App: React.FC = () => {
       return;
     }
 
-    // Process a "wave" (first N items or just 1? Python script did 1.
-    // To make it look good in React, let's process 1 but fast, or a batch.)
-    // Let's process 1 item per tick for clear propagation visualization.
-
+    // Process 1 item per tick for clear propagation visualization
     const [currentNode, ...remainingQueue] = currentQueue;
     const { row, col } = currentNode;
     const currentKey = `${row},${col}`;
@@ -151,9 +171,9 @@ const App: React.FC = () => {
     // Flip self
     newGrid[row][col] *= -1;
 
-    // Update metadata for current cell
+    // Update metadata for current cell - use ref for step count
     const newMetadata = metadataRef.current.map(r => [...r]);
-    const currentStep = stats.steps + 1;
+    const currentStep = stepsRef.current + 1;
     newMetadata[row][col] = {
       flippedAtStep: currentStep,
       generation: currentGeneration,
@@ -198,35 +218,88 @@ const App: React.FC = () => {
     setGrid(newGrid);
     setQueue(queueRef.current);
     setCellMetadata(newMetadata);
-    setStats(prev => ({
-      steps: prev.steps + 1,
+    setStats({
+      steps: currentStep,
       coherence: calculateCoherence(newGrid),
       activeSeams: queueRef.current.length,
       propagationVelocity,
       waveFrontWidth
-    }));
+    });
 
-  }, [stats.steps]);
+  }, []); // No dependencies - uses refs for all mutable data
+
+  // Keep a ref to stepSimulation for stable interval callback
+  const stepSimulationRef = useRef(stepSimulation);
+  useEffect(() => { stepSimulationRef.current = stepSimulation; }, [stepSimulation]);
 
   // Step Forward (single tick)
   const handleStepForward = useCallback(() => {
     if (!isRunning) {
-      stepSimulation();
+      stepSimulationRef.current();
     }
-  }, [isRunning, stepSimulation]);
+  }, [isRunning]);
 
-  // Animation Loop
+  // Animation Loop - uses ref to avoid recreating interval
   useEffect(() => {
-    let intervalId: any; // Using any to support both NodeJS and Browser types implicitly without strict TS errors
+    let intervalId: ReturnType<typeof setInterval> | null = null;
     if (isRunning && !annihilated) {
-      intervalId = setInterval(stepSimulation, config.delay);
+      intervalId = setInterval(() => {
+        stepSimulationRef.current();
+      }, config.delay);
     }
-    return () => clearInterval(intervalId);
-  }, [isRunning, annihilated, config.delay, stepSimulation]);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isRunning, annihilated, config.delay]);
+
+  // Reset grid when gridSize changes (but not on initial mount)
+  const initialMountRef = useRef(true);
+  useEffect(() => {
+    if (initialMountRef.current) {
+      initialMountRef.current = false;
+      return;
+    }
+    // Grid size changed - reset with new size
+    resetWithSize(config.gridSize);
+  }, [config.gridSize, resetWithSize]);
 
 
+  // Render Bottle Mode
+  if (appMode === 'bottle') {
+    return <BottleMode onBack={() => setAppMode('lattice')} />;
+  }
+
+  // Render Lattice Mode
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-gray-50 text-gray-900'} flex flex-col md:flex-row font-sans selection:bg-rose-500/30 transition-colors duration-300 relative`}>
+
+      {/* Mode Switcher - Fixed top right */}
+      <div className="fixed top-4 right-4 z-50 flex gap-2">
+        <button
+          onClick={() => setAppMode('lattice')}
+          className={`p-2 rounded-lg flex items-center gap-2 transition-all ${
+            appMode === 'lattice'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+          }`}
+          title="Lattice Mode"
+        >
+          <Grid3X3 size={18} />
+          <span className="text-xs font-medium hidden sm:inline">Lattice</span>
+        </button>
+        <button
+          onClick={() => setAppMode('bottle')}
+          className={`p-2 rounded-lg flex items-center gap-2 transition-all ${
+            appMode === 'bottle'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+          }`}
+          title="Bottle Mode - Regime Switch Demo"
+        >
+          <Beaker size={18} />
+          <span className="text-xs font-medium hidden sm:inline">Bottle</span>
+        </button>
+      </div>
 
       {/* Mobile Menu Toggle Button */}
       <button
@@ -246,24 +319,36 @@ const App: React.FC = () => {
         />
       )}
 
+      {/* Desktop Sidebar Toggle Button - Always visible */}
+      <button
+        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        className={`hidden md:flex fixed top-4 z-50 p-2 rounded-lg ${isDarkMode ? 'bg-zinc-800 text-zinc-100 hover:bg-zinc-700' : 'bg-white text-gray-900 hover:bg-gray-100'} shadow-lg border ${isDarkMode ? 'border-zinc-700' : 'border-gray-200'} transition-all items-center gap-2`}
+        style={{ left: isSidebarCollapsed ? '1rem' : '340px' }}
+        aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {isSidebarCollapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
+        <span className="text-xs font-medium">{isSidebarCollapsed ? 'Show' : 'Hide'}</span>
+      </button>
+
       {/* Left Panel: Controls & Info */}
       <div className={`
-        w-full md:w-1/3 md:min-w-[350px] md:max-w-[400px]
+        ${isSidebarCollapsed ? 'md:w-0 md:min-w-0 md:max-w-0 md:overflow-hidden md:opacity-0' : 'md:w-[340px] md:min-w-[340px] md:max-w-[340px] md:opacity-100'}
+        w-full
         ${isDarkMode ? 'border-zinc-800 bg-zinc-950' : 'border-gray-200 bg-white'}
         flex flex-col h-screen overflow-y-auto custom-scrollbar z-40 shadow-2xl
         md:relative md:translate-x-0
-        fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 transform transition-all duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         border-r
       `}>
-        <div className="p-6 md:p-8 flex-1 flex flex-col gap-6">
+        <div className="p-5 md:p-6 flex-1 flex flex-col gap-4">
           <header className="flex items-start justify-between">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-rose-500 to-indigo-500 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-rose-500 to-indigo-500 bg-clip-text text-transparent">
                 Seam Lattice
               </h1>
-              <p className={`${isDarkMode ? 'text-zinc-500' : 'text-gray-500'} mt-2 font-mono text-sm`}>
-                Non-orientable topology prototype
+              <p className={`${isDarkMode ? 'text-zinc-500' : 'text-gray-500'} mt-1 font-mono text-xs`}>
+                Non-orientable topology
               </p>
             </div>
             {/* Dark Mode Toggle */}
@@ -272,7 +357,7 @@ const App: React.FC = () => {
               className={`p-2 rounded-lg ${isDarkMode ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} transition-all border ${isDarkMode ? 'border-zinc-700' : 'border-gray-300'}`}
               aria-label="Toggle dark mode"
             >
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </header>
 
@@ -365,6 +450,50 @@ const App: React.FC = () => {
              </div>
           </div>
         </div>
+
+        {/* Desktop Floating Controls - Shows when sidebar is collapsed */}
+        {isSidebarCollapsed && (
+          <div className="hidden md:flex fixed top-4 right-4 z-30 gap-2 items-center">
+            {/* Quick Stats */}
+            <div className={`${isDarkMode ? 'bg-zinc-900/95 border-zinc-700' : 'bg-white/95 border-gray-300'} backdrop-blur border rounded-lg px-4 py-2 flex items-center gap-4 text-sm`}>
+              <div className="flex items-center gap-2">
+                <span className={`${isDarkMode ? 'text-zinc-400' : 'text-gray-500'}`}>Steps:</span>
+                <span className="font-mono font-bold">{stats.steps}</span>
+              </div>
+              <div className={`w-px h-4 ${isDarkMode ? 'bg-zinc-700' : 'bg-gray-300'}`}></div>
+              <div className="flex items-center gap-2">
+                <span className={`${isDarkMode ? 'text-zinc-400' : 'text-gray-500'}`}>Active:</span>
+                <span className="font-mono font-bold">{stats.activeSeams}</span>
+              </div>
+            </div>
+            {/* Control Buttons */}
+            <button
+              onClick={handleIgnite}
+              disabled={isRunning}
+              className="p-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              aria-label="Ignite seam"
+              title="Ignite"
+            >
+              <Zap size={20} />
+            </button>
+            <button
+              onClick={() => setIsRunning(!isRunning)}
+              className={`p-3 rounded-lg ${isRunning ? 'bg-amber-500 hover:bg-amber-400' : 'bg-emerald-500 hover:bg-emerald-400'} text-white shadow-lg transition-all`}
+              aria-label={isRunning ? 'Pause' : 'Play'}
+              title={isRunning ? 'Pause' : 'Play'}
+            >
+              {isRunning ? '⏸' : '▶'}
+            </button>
+            <button
+              onClick={handleReset}
+              className={`p-3 rounded-lg ${isDarkMode ? 'bg-zinc-700 hover:bg-zinc-600' : 'bg-gray-300 hover:bg-gray-400'} text-white shadow-lg transition-all`}
+              aria-label="Reset"
+              title="Reset"
+            >
+              <RotateCcw size={20} />
+            </button>
+          </div>
+        )}
 
         {/* Mobile Quick Actions - Floating Action Buttons */}
         <div className="md:hidden fixed bottom-20 right-4 flex flex-col gap-3 z-30">
